@@ -29,3 +29,10 @@ The repository contains lab work done as a part of Computer Networks course at B
         - A UDP echo server
         - a server with a guess game, client is asked to pick a number between 1 to 10, and if that is the number picked by server too, client wins, else looses.
         - FTP servers following TCP and UDP protocols supporting partial file sending, given an offset. 
+
+- Lab5
+    - To learn the concept of reliable protocol designand implementation
+    - To learn Stop and Wait reliable protocol design and implementation using UDP sockets
+    - **Programs included -**
+        - Stop and wait protocol without any packet loss
+        - Stop and wait protocol with packet loss

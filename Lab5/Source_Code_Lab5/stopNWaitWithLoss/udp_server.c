@@ -8,9 +8,21 @@
 
 #define BUFLEN 512  //Max length of buffer
 #define PORT 8882   //The port on which to listen for incoming data
- 
-void error_exit(char *s)
-{
+
+typedef enum { true, false} bool;
+
+bool toDiscard;
+
+void discardRandom(){
+    if(rand() > RAND_MAX/2){
+        toDiscard = true;
+    }
+    else{
+        toDiscard = false;
+    }
+}
+
+void error_exit(char *s){
     perror(s);
     exit(1);
 }
@@ -49,26 +61,28 @@ int main(void)
     int state =0;
     while(1)
     {	     
-        printf("current state is %d\n", state);
+        // printf("current state is %d\n", state);
         switch(state)
         {  
             case 0:
             {
                 printf("Waiting for packet 0 from sender...\n");
                 fflush(stdout);
+                discardRandom();
 
                 //try to receive some data, this is a blocking call
                 if ((recv_len = recvfrom(sockfd, &rcv_pkt, BUFLEN, 0, (struct sockaddr *) &clientAddr, &slen)) == -1){
                     error_exit("recvfrom()");
                 }
-                printf("Packet received with seq. no. %d and Packet content is = %s\n",rcv_pkt.sq_no, rcv_pkt.data);
-                if (rcv_pkt.sq_no == 0){                      
+                
+                if (rcv_pkt.sq_no == 0 && toDiscard == false){                      
                     ack_pkt.sq_no = 0;
                     
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
                         error_exit("sendto()");
                     }
                     state = 1;
+                    printf("Packet received with seq. no. %d and Packet content is = %s\n",rcv_pkt.sq_no, rcv_pkt.data);
                     break;
                 }
                 else{   // send ACK1 and remain in this state
@@ -77,7 +91,7 @@ int main(void)
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
                         error_exit("sendto()");
                     }
-                }
+                }                
             }
             break;
             case 1:
@@ -88,17 +102,16 @@ int main(void)
                 //try to receive some data, this is a blocking call
                 if ((recv_len = recvfrom(sockfd, &rcv_pkt, BUFLEN, 0, (struct sockaddr *) &clientAddr, &slen)) == -1){
                     error_exit("recvfrom()");
-                }
+                }               
 
-                printf("Packet received with seq. no.= %d and Packet content is= %s\n",rcv_pkt.sq_no, rcv_pkt.data);
-
-                if (rcv_pkt.sq_no==1){                     
+                if (rcv_pkt.sq_no == 1 && toDiscard == false){                     
                     ack_pkt.sq_no = 1;
                     
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
                         error_exit("sendto()"); 
                     }
                     state = 0;
+                    printf("Packet received with seq. no.= %d and Packet content is= %s\n",rcv_pkt.sq_no, rcv_pkt.data);
                     break;
                 }
                 else{   //send ACK0  and remain in this state
@@ -107,7 +120,7 @@ int main(void)
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
                         error_exit("sendto()"); 
                     }
-                }
+                }                
             }   
             break;
         }

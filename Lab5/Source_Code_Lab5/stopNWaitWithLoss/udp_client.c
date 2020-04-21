@@ -14,6 +14,19 @@
 #define PORT 8882   //The port on which to send data
 #define TIMEOUT 5
 
+typedef enum { true, false} bool;
+
+bool toDiscard;
+
+void discardRandom(){
+    if(rand() > RAND_MAX/2){
+        toDiscard = true;
+    }
+    else{
+        toDiscard = false;
+    }
+}
+
 typedef struct packet1{
     int sq_no;
 }ACK_PKT;
@@ -67,6 +80,8 @@ int main(void){
 
             case 1:
             {//waiting for ACK 0
+
+                discardRandom();
                 fd_set rcvSet;
                 int n;
                 
@@ -93,13 +108,16 @@ int main(void){
                 // socket is readable => ack arrived
                 if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
                     error_exit("recvfrom()");
+                }               
+
+                if(rcv_ack.sq_no == 0 && toDiscard == false){  // if ACK0 arrived, change the state                        
+                    state = 2;                    
+                }
+                else{
+                    break;
                 }
 
                 printf("Received ack seq. no. %d\n\n",rcv_ack.sq_no);
-
-                if(rcv_ack.sq_no==0){  // if ACK0 arrived, change the state                        
-                    state = 2;                     
-                }
             }
             break;
 
@@ -119,6 +137,8 @@ int main(void){
 
             case 3:	//waiting for ACK 1
             {
+                discardRandom();
+
                 fd_set rcvSet;
                 int n;
                 
@@ -145,13 +165,16 @@ int main(void){
                 // socket is readable => ack arrived
                 if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
                     error_exit("recvfrom()");
+                }               
+
+                if (rcv_ack.sq_no == 1 && toDiscard == false){  // ACK1 has arrived, change the state                        
+                    state = 0;                     
+                }
+                else{
+                    break;
                 }
 
-                printf("Received ack seq. no. %d\n\n",rcv_ack.sq_no);
-
-                if (rcv_ack.sq_no == 1){  // ACK1 has arrived, change the state                        
-                    state = 0;                     
-                }                     
+                printf("Received ack seq. no. %d\n\n",rcv_ack.sq_no);                     
             }
             break;
         }
