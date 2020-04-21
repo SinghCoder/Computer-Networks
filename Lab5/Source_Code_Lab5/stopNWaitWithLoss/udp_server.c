@@ -49,6 +49,7 @@ int main(void)
     int state =0;
     while(1)
     {	     
+        printf("current state is %d\n", state);
         switch(state)
         {  
             case 0:
@@ -60,8 +61,8 @@ int main(void)
                 if ((recv_len = recvfrom(sockfd, &rcv_pkt, BUFLEN, 0, (struct sockaddr *) &clientAddr, &slen)) == -1){
                     error_exit("recvfrom()");
                 }
-                if (rcv_pkt.sq_no == 0){  
-                    printf("Packet received with seq. no. %d and Packet content is = %s\n",rcv_pkt.sq_no, rcv_pkt.data);
+                printf("Packet received with seq. no. %d and Packet content is = %s\n",rcv_pkt.sq_no, rcv_pkt.data);
+                if (rcv_pkt.sq_no == 0){                      
                     ack_pkt.sq_no = 0;
                     
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
@@ -78,6 +79,7 @@ int main(void)
                     }
                 }
             }
+            break;
             case 1:
             {   
                 printf("Waiting for packet 1 from sender...\n");
@@ -87,8 +89,10 @@ int main(void)
                 if ((recv_len = recvfrom(sockfd, &rcv_pkt, BUFLEN, 0, (struct sockaddr *) &clientAddr, &slen)) == -1){
                     error_exit("recvfrom()");
                 }
-                if (rcv_pkt.sq_no==1){ 
-                    printf("Packet received with seq. no.=1 %d and Packet content is= %s\n",rcv_pkt.sq_no, rcv_pkt.data);
+
+                printf("Packet received with seq. no.= %d and Packet content is= %s\n",rcv_pkt.sq_no, rcv_pkt.data);
+
+                if (rcv_pkt.sq_no==1){                     
                     ack_pkt.sq_no = 1;
                     
                     if (sendto(sockfd, &ack_pkt, recv_len, 0, (struct sockaddr*) &clientAddr, slen) == -1){
@@ -105,6 +109,7 @@ int main(void)
                     }
                 }
             }   
+            break;
         }
     }
     close(sockfd);

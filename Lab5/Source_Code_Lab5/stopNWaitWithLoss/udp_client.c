@@ -49,6 +49,7 @@ int main(void){
     int state = 0;
     while(1)
     {
+        // printf("current state is %d\n", state);
         switch(state)
         {
             case 0: 
@@ -71,36 +72,33 @@ int main(void){
                 
                 struct timeval tv;
 
-                for(; ;){
-                    FD_ZERO(&rcvSet);
-                    FD_SET(sockfd, &rcvSet);
+                FD_ZERO(&rcvSet);
+                FD_SET(sockfd, &rcvSet);
 
-                    tv.tv_sec = TIMEOUT;
-                    tv.tv_usec = 0;
+                tv.tv_sec = TIMEOUT;
+                tv.tv_usec = 0;
 
-                    if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
-                        error_exit("error on select");
-                    }
-                    
-                    if(n == 0) {     // timeout expired, send packet again and remain in this state
-                        printf("Timneout occured\n");
-                        if (sendto(sockfd , &send_pkt, sizeof(send_pkt), 0 , (struct sockaddr *) &serverAddr, slen) == -1){
-                            error_exit("sendto()");
-                        }
-                        break;
-                    }
-                    
-                    // socket is readable => ack arrived
-                    if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
-                        error_exit("recvfrom()");
-                    }
-
-                    printf("Received ack seq. no. %d\n",rcv_ack.sq_no);
-
-                    if(rcv_ack.sq_no==0){  // if ACK0 arrived, change the state                        
-                        state = 2;                     
+                if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
+                    error_exit("error on select");
+                }
+                
+                if(n == 0) {     // timeout expired, send packet again and remain in this state
+                    printf("Timeout occured\n");
+                    if (sendto(sockfd , &send_pkt, sizeof(send_pkt), 0 , (struct sockaddr *) &serverAddr, slen) == -1){
+                        error_exit("sendto()");
                     }
                     break;
+                }
+                
+                // socket is readable => ack arrived
+                if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
+                    error_exit("recvfrom()");
+                }
+
+                printf("Received ack seq. no. %d\n\n",rcv_ack.sq_no);
+
+                if(rcv_ack.sq_no==0){  // if ACK0 arrived, change the state                        
+                    state = 2;                     
                 }
             }
             break;
@@ -126,34 +124,33 @@ int main(void){
                 
                 struct timeval tv;
 
-                for(; ;){
-                    FD_ZERO(&rcvSet);
-                    FD_SET(sockfd, &rcvSet);
+                FD_ZERO(&rcvSet);
+                FD_SET(sockfd, &rcvSet);
 
-                    tv.tv_sec = TIMEOUT;
-                    tv.tv_usec = 0;
+                tv.tv_sec = TIMEOUT;
+                tv.tv_usec = 0;
 
-                    if((n = select(1, &rcvSet, NULL, NULL, &tv) ) < 0){
-                        error_exit("error on select");
+                if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
+                    error_exit("error on select");
+                }
+                
+                if(n == 0) {     // timeout expired, send packet again and remain in this state
+                    printf("Timeout occured\n");
+                    if (sendto(sockfd , &send_pkt, sizeof(send_pkt), 0 , (struct sockaddr *) &serverAddr, slen) == -1){
+                        error_exit("sendto()");
                     }
-                    
-                    if(n == 0) {     // timeout expired, send packet again and remain in this state
-                        if (sendto(sockfd , &send_pkt, sizeof(send_pkt), 0 , (struct sockaddr *) &serverAddr, slen) == -1){
-                            error_exit("sendto()");
-                        }
-                        break;
-                    }
-                    
-                    // socket is readable => ack arrived
-                    if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
-                        error_exit("recvfrom()");
-                    }
+                    break;
+                }
+                
+                // socket is readable => ack arrived
+                if (recvfrom(sockfd , &rcv_ack, sizeof(rcv_ack), 0, (struct sockaddr *) &serverAddr, &slen) == -1){
+                    error_exit("recvfrom()");
+                }
 
-                    printf("Received ack seq. no. %d\n",rcv_ack.sq_no);
+                printf("Received ack seq. no. %d\n\n",rcv_ack.sq_no);
 
-                    if (rcv_ack.sq_no==1){  // ACK1 has arrived, change the state                        
-                        state = 0;                     
-                    }  
+                if (rcv_ack.sq_no == 1){  // ACK1 has arrived, change the state                        
+                    state = 0;                     
                 }                     
             }
             break;
