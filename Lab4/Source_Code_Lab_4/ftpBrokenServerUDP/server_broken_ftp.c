@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#define CHUNK_SIZE 256
+
 void error_exit(char *msg){
     perror(msg);
     exit(EXIT_FAILURE);
@@ -84,8 +86,8 @@ int main(void)
         while(1)
         {
             /* First read file in chunks of 256 bytes */
-            unsigned char buff[256]={0};
-            int nread = fread(buff ,1 ,256 ,fp);
+            unsigned char buff[CHUNK_SIZE]={0};
+            int nread = fread(buff ,1 ,CHUNK_SIZE ,fp);
             printf("Bytes read %d \n", nread);        
 
             /* If read was success, send data. */
@@ -102,7 +104,7 @@ int main(void)
              * There is something tricky going on with read .. 
              * Either there was error, or we reached end of file.
              */
-            if (nread < 256)
+            if (nread < CHUNK_SIZE)
             {
                 if (feof(fp))
                     printf("End of file\n");

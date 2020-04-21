@@ -89,10 +89,14 @@ int main(void)
     while((bytesReceived = recvfrom(sockfd, recvBuff, CHUNK_SIZE, 0, (struct sockaddr *)&serverAddr, &serverLen)) > 0)
     {
         printf("Bytes received %d\n",bytesReceived);    
+        recvBuff[bytesReceived] = '\0';
         // recvBuff[n] = 0;
         if( fwrite(recvBuff, 1,bytesReceived,fp) < 0)
             error_exit("fwrite");
-        // printf("%s \n", recvBuff);
+        printf("Recieved from server : %s \n", recvBuff);
+
+        if(bytesReceived < CHUNK_SIZE)
+            break;
     }
 
     fclose(fp);
