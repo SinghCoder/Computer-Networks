@@ -7,11 +7,11 @@
 #include <sys/types.h>
 #include <sys/poll.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <sys/select.h>
 
 #define INPUT_FILE "input.txt"
-#define PACKET_SIZE 100
-#define SERVER_PORT 8888
+#define CHUNK_SIZE 9
+#define SERVER_PORT 8894
 #define SERVER_IP "127.0.0.1"
 #define TIMEOUT 2
 
@@ -21,7 +21,7 @@ typedef enum { SENT, RECEIVED } action;
 typedef enum { CHANNEL_ONE, CHANNEL_TWO } channel_id;
 
 typedef struct packet{
-    char *data;
+    char data[CHUNK_SIZE + 1];
     int data_size;
     int seq_num;
     bool is_last;
