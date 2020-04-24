@@ -9,12 +9,15 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <fcntl.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
 
 #define INPUT_FILE "input.txt"
 #define CHUNK_SIZE 9
-#define SERVER_PORT 8894
+#define SERVER_PORT 8888
 #define SERVER_IP "127.0.0.1"
 #define TIMEOUT 2
+#define MAX_TRIES 3
 
 typedef enum { false, true } bool;
 typedef enum { DATA, ACK } packet_category;
@@ -30,6 +33,8 @@ typedef struct packet{
     int channel_id;
 }packet_t;
 
-void error_exit(char *s);
-
-void print_trace(action act, int seq_num, int size, channel_id ch_id);
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short  *array;
+} semArgs;

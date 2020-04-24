@@ -4,15 +4,12 @@ bool toDiscard;
 
 void discardRandom(){
     int n = rand() % 100;
-    // printf("random val is : %d", n);
     if( n < PDR){
         toDiscard = true;
     }
     else{
         toDiscard = false;
     }
-    // if(toDiscard)
-    // printf("And I'm discarding\n");
 }
 
 void error_exit(char *msg){
@@ -20,16 +17,15 @@ void error_exit(char *msg){
     exit(EXIT_FAILURE);
 }
 
-void print_trace(action act, int seq_num, int size, channel_id ch_id, char *data){
+void print_trace(action act, int seq_num, int size, channel_id ch_id){
     char *actionStr;
     if(act == SENT){
         actionStr = "SENT";
     }
     else{
-        actionStr = "RECEIVED";
+        actionStr = "RCVD";
     }
-    printf("Server | %s | SeqNum : %d | Size : %d | Channel : %d\n", actionStr, seq_num, size, ch_id);
-    printf("Content : %s\n", data);
+    printf("%s | Seq. No : %d | Size : %d bytes | Channel : %d\n", actionStr, seq_num, size, ch_id);
 }
 
 int main ()
@@ -39,9 +35,10 @@ int main ()
     if (listenfd < 0){ 
         error_exit("listening socket server error");
     }
-
-    printf ("Server Socket Created\n");
     
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+        error_exit("setsockopt(SO_REUSEADDR) failed");
+
     /*CONSTRUCT LOCAL ADDRESS STRUCTURE*/
     struct sockaddr_in serverAddress, clientAddress;
     
@@ -50,21 +47,17 @@ int main ()
     serverAddress.sin_port = htons(SERVER_PORT);
     serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
     
-    printf ("Server address assigned\n");
-    
     int temp = bind(listenfd, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
     
     if (temp < 0){
         error_exit("bind error");
     }
-    printf ("Binding successful\n");
 
     int temp1 = listen(listenfd, MAXPENDING);
     
     if (temp1 < 0){
         error_exit("listen error");
     }
-    printf ("Now Listening\n");
     
     char msg[BUFFERSIZE];
     int clientLength = sizeof(clientAddress);
@@ -81,12 +74,10 @@ int main ()
             close(listenfd);
 
             packet_t dataPkt, ackPkt;
-
-            printf ("Handling Client %s inside process %d\n", inet_ntoa(clientAddress.sin_addr), getpid());
             
             FILE *destFilePtr = fopen("destination_file.txt", "wb");
 
-            for(; ; ){                                
+            for(; ; ){
                                     
                 if ( recv(connfd, &dataPkt, sizeof(dataPkt) , 0) < 0){ 
                     error_exit("recv dataPkt error");
@@ -95,7 +86,7 @@ int main ()
                 discardRandom();
 
                 if(toDiscard != true){
-                    print_trace(RECEIVED, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id, dataPkt.data);
+                    print_trace(RECEIVED, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id);
                 
                     fseek(destFilePtr, dataPkt.seq_num, SEEK_SET);
                     fwrite(dataPkt.data, 1, dataPkt.data_size, destFilePtr);
@@ -112,10 +103,16 @@ int main ()
                     if (bytesSent != sizeof(ackPkt)){
                         error_exit("send ack error");
                     }
+                    else{
+                        print_trace(SENT, ackPkt.seq_num, ackPkt.data_size, ackPkt.channel_id);
+                    }
 
                     if(dataPkt.is_last)
                         break;
-                }                
+                }     
+                else{
+                    printf("discarding %d seqNum pkt\n", dataPkt.seq_num);
+                }           
             }
             
             fclose(destFilePtr);
@@ -123,8 +120,7 @@ int main ()
             if( close(connfd) < 0){
                 error_exit("close connfd error");
             }
-
-            printf("Received completely from someone\n");
+            
             exit(EXIT_SUCCESS);
         }
 

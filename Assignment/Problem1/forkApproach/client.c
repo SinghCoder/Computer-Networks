@@ -5,8 +5,18 @@ void error_exit(char *s){
     exit(1);
 }
 
-void sendToServer(channel_id chnlNum, int fileFd, int numChunks){
-    
+void print_trace(action act, int seq_num, int size, channel_id ch_id){
+    char *actionStr;
+    if(act == SENT){
+        actionStr = "SENT PKT";
+    }
+    else{
+        actionStr = "RCVD PKT";
+    }
+    printf("%s | Seq. No : %d | Size : %d bytes | Channel : %d\n", actionStr, seq_num, size, ch_id);    
+}
+
+void sendToServer(channel_id chnlNum, int fileFd, int numChunks, int semId){
     struct sockaddr_in serverAddr;
     int sockfd, slen=sizeof(serverAddr);
 
@@ -25,81 +35,108 @@ void sendToServer(channel_id chnlNum, int fileFd, int numChunks){
         error_exit("connect child1 error");
     }
 
+    struct timeval timeout;      
+    timeout.tv_sec = TIMEOUT;
+    timeout.tv_usec = 0;
+
+    if (setsockopt (sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
+        error_exit("setsockopt failed for sockfd\n");
+
     packet_t dataPkt, ackPkt;
+    struct sembuf semops[1];
     int bytesRead = 0;
-    // dataPkt.data[bytesRead] = '\0';
-    // if(bytesRead < 0){
-    //     error_exit("read error");
-    // }
+    int numTries = 0;
+    do{
+        semops[0].sem_num = 0;
+        semops[0].sem_op = -1;
+        semops[0].sem_flg = 0;
+        if(semop(semId, semops, 1) < 0)
+            error_exit("semop error");
 
-    // for(int i = chnlNum; i < numChunks; i += 2){
-    while( (bytesRead = read(fileFd, dataPkt.data, CHUNK_SIZE)) > 0){
-    //     fseek( filePtr, i * CHUNK_SIZE, SEEK_SET);
-        // bytesRead = fread(dataPkt.data, 1, CHUNK_SIZE, filePtr);
-
-        dataPkt.data[bytesRead] = '\0';
-    //     // printf("%s\n", dataPkt.data);
-
-        // if(bytesRead == 0){
-        //     if(feof( filePtr )){
-        //         printf("I'm process %d, and I have done my work\n", getpid());
-        //         printf("At the end I read %s", dataPkt.data);
-        //         // return;
-        //     }
-        //     else if(ferror( filePtr )){
-        //         error_exit(" file read error");
-        //     }
-        // }
-        
-    //     // dataPkt.data[bytesRead] = '\0';
+        bytesRead = read(fileFd, dataPkt.data, CHUNK_SIZE);
+        if(bytesRead <= 0){
+            break;
+        }
+        dataPkt.data[bytesRead] = '\0';        
         dataPkt.category = DATA;
         dataPkt.channel_id = chnlNum;
         dataPkt.data_size = bytesRead;
-        dataPkt.seq_num = lseek(fileFd, 0, SEEK_CUR);
+        dataPkt.seq_num = lseek(fileFd, 0, SEEK_CUR) - bytesRead;
+
+        semops[0].sem_num = 0;
+        semops[0].sem_op = 1;
+        semops[0].sem_flg = 0;
+        if(semop(semId, semops, 1) < 0)
+            error_exit("semop error");
+
         if(dataPkt.seq_num < 0){
             error_exit("Error seeking");
         }
-    //     if(i == numChunks - 1 || i == numChunks - 2)
-    //         dataPkt.is_last = true;
-    //     else
-    //         dataPkt.is_last = false;        
+        if( (numChunks - 1) * CHUNK_SIZE <= dataPkt.seq_num){
+            dataPkt.is_last = true;
+        }
+        else{
+            dataPkt.is_last = false;        
+        }
 
-    //     if( send(sockfd, &dataPkt, sizeof(dataPkt), 0) < 0){
-    //         error_exit("socket send error");
-    //     }
+        if( (numTries < MAX_TRIES) && send(sockfd, &dataPkt, sizeof(dataPkt), 0) < 0){
+            error_exit("socket send error");
+        }
+        else{
+            numTries++;
+            print_trace(SENT, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id);
+        }
 
-    //     fd_set rcvSet;
-    //     int n;
+        fd_set rcvSet;
+        int n;
         
-    //     struct timeval tv;
+        struct timeval tv;
 
-    //     for( ; ; ){            
+        for( ; ; ){            
 
-    //         FD_ZERO(&rcvSet);
-    //         FD_SET(sockfd, &rcvSet);
+            FD_ZERO(&rcvSet);
+            FD_SET(sockfd, &rcvSet);
 
-    //         tv.tv_sec = TIMEOUT;
-    //         tv.tv_usec = 0;
+            tv.tv_sec = TIMEOUT;
+            tv.tv_usec = 0;
 
-    //         if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
-    //             error_exit("select error");
-    //         }
+            if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
+                error_exit("select error");
+            }
 
-    //         else if(n == 0) {     // timeout expired, send packet again
-    //             printf("Timeout occured\n");
-    //             if (send(sockfd , &dataPkt, sizeof(dataPkt), 0) < 0 ){
-    //                 error_exit("send after timeout error");
-    //             }
-    //         }
+            else if(n == 0) {     // timeout expired, send packet again
+                if(numTries >= MAX_TRIES){
+                    printf("Too many attempts done for packet with seq num %d, now stepping back\n", dataPkt.seq_num);
+                    wait(NULL);
+                    exit(EXIT_SUCCESS);
+                }
+                else{
+                    if (send(sockfd , &dataPkt, sizeof(dataPkt), 0) < 0 ){
+                        error_exit("send after timeout error");
+                    }
+                    else{
+                        numTries++;
+                        print_trace(SENT, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id);
+                    }
+                }
+            }
 
-    //         else{
-    //             if(recv(sockfd, &ackPkt, sizeof(ackPkt), 0) < 0){
-    //                 error_exit("recv ack error");
-    //             }
-    //             break;
-    //         }
-    //     }
-    }
+            else{
+                if(recv(sockfd, &ackPkt, sizeof(ackPkt), 0) < 0){
+                    error_exit("recv ack error");
+                }
+                else{
+                    numTries = 0;
+                    print_trace(RECEIVED, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id);
+                }
+                if(ackPkt.is_last){
+                    wait(NULL);
+                    exit(EXIT_SUCCESS);
+                }
+                break;
+            }
+        }
+    }while( bytesRead > 0);
 
     if(close(sockfd) < 0){
         error_exit("close sockfd error");
@@ -131,14 +168,24 @@ int main(){
         error_exit("Could not open input file");
     }
 
-    pid_ch1 = fork();
+    int semId = semget(IPC_PRIVATE, 1, 0);
+
+    if(semId < 0){
+        error_exit(" semget failed");
+    }
+    
+    semArgs.val = 1;
+    if(semctl(semId, 0, SETVAL, semArgs) < 0){
+        error_exit("semctl failed");
+    }
+
+    pid_ch1 = fork();    
 
     switch(pid_ch1){
         case 0: // child_one
         {
-            printf("Hello from child %d, I will handle odd chunks and fileSize is %d bytes from filePtr\n", getpid(), fileSize);
             
-            sendToServer(CHANNEL_ONE, fileFd, numChunks);
+            sendToServer(CHANNEL_ONE, fileFd, numChunks, semId);
 
             if(close(fileFd) < 0){
                 error_exit("close fileFd error");
@@ -152,16 +199,14 @@ int main(){
         }
         break;
         default:    //parent
-        {           
-            printf("Hello from parent %d, I will handle even chunks and fileSize is %d bytes\n", getpid(), fileSize);
-            
-            sendToServer(CHANNEL_TWO, fileFd, numChunks);
+        {                  
+            sendToServer(CHANNEL_TWO, fileFd, numChunks, semId);
 
             if(close(fileFd) < 0){
                 error_exit("close fileFd error");
             }
 
-            wait(NULL);            
+            wait(NULL);              
         }
         break;
     }    

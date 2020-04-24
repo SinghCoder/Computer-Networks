@@ -8,9 +8,9 @@
 
 #define MAXPENDING 5
 #define BUFFERSIZE 32
-#define SERVER_PORT 8894
+#define SERVER_PORT 8888
 #define CHUNK_SIZE 9
-#define PDR 10  
+#define PDR 30  
 
 typedef enum { false, true } bool;
 typedef enum { DATA, ACK } packet_category;
