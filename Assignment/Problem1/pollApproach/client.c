@@ -25,6 +25,7 @@ int nextChunkNum(bool *chunkSent, bool *inProgress, int numChunks){
             return i;
         }
     }
+    return -1;
 }
 
 int main(){
@@ -100,57 +101,72 @@ int main(){
     for(int i = 0; i < NUM_CONNECTIONS; i++) {
         nextChunk = nextChunkNum(chunkSent, inProgress, numChunks);
         
-        fseek( inpFilePtr, nextChunk * CHUNK_SIZE, SEEK_SET);
-        bytesRead = fread(dataPkt[i].data, 1, CHUNK_SIZE, inpFilePtr);
+        if(nextChunk != -1){
+            fseek( inpFilePtr, nextChunk * CHUNK_SIZE, SEEK_SET);
+            bytesRead = fread(dataPkt[i].data, 1, CHUNK_SIZE, inpFilePtr);
 
-        dataPkt[i].data[bytesRead] = '\0';
-        // printf("%s\n", dataPkt[i].data);
+            dataPkt[i].data[bytesRead] = '\0';
+            // printf("%s\n", dataPkt[i].data);
 
-        if(bytesRead == 0){
-            if(feof( inpFilePtr )){
-                // return;
+            if(bytesRead == 0){
+                if(feof( inpFilePtr )){
+                    // return;
+                }
+                else if(ferror( inpFilePtr )){
+                    error_exit(" file read error");
+                }
             }
-            else if(ferror( inpFilePtr )){
-                error_exit(" file read error");
-            }
-        }
-        
-        dataPkt[i].category = DATA;
-        dataPkt[i].channel_id = i;
-        dataPkt[i].data_size = bytesRead;
-        dataPkt[i].seq_num = nextChunk * CHUNK_SIZE;
-        if(nextChunk == numChunks - 1 || nextChunk == numChunks - 2)
-            dataPkt[i].is_last = true;
-        else
-            dataPkt[i].is_last = false;        
+            
+            dataPkt[i].category = DATA;
+            dataPkt[i].channel_id = i;
+            dataPkt[i].data_size = bytesRead;
+            dataPkt[i].seq_num = nextChunk * CHUNK_SIZE;
+            if(nextChunk == numChunks - 1 || nextChunk == numChunks - 2)
+                dataPkt[i].is_last = true;
+            else
+                dataPkt[i].is_last = false;        
 
-        if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
-            error_exit("socket send error");
-        }
-        else{
-            numTries[i] = 1;
-            pktsOut++;
+            if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
+                error_exit("socket send error");
+            }
+            else{
+                numTries[i] = 1;
+                pktsOut++;
+            }
         }
     }
     for( ; ; ){ 
         for(int i = 0; i < NUM_CONNECTIONS; i++) {
             int n = recv(sockfd[i], &ackPkt[i], sizeof(ackPkt[i]), 0);
+            printf("recv return %d for i = %d\n", n, i);
             if(n < 0){
-                error_exit("recv ack error");
-            }
-            else if(n == 0){
-                if(numTries[i] < MAX_TRIES){
-                    if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
-                        error_exit("socket send error");
+                if(errno != EAGAIN)
+                    error_exit("recv ack error");
+                else{
+                    printf("numTries[%d] = %d\n", i, numTries[i]);
+                    if(numTries[i] < MAX_TRIES){
+                        printf("sending data again\n");
+                        if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
+                            error_exit("socket send error");
+                        }
+                        else{
+                            numTries[i]++;
+                            pktsOut++;
+                        }           
                     }
                     else{
-                        numTries[i]++;
-                        pktsOut++;
-                    }           
+                        if(numTries[i] == MAX_TRIES){
+                            printf("crossed my retries, stepping backl\n");
+                            chunkSent[dataPkt[i].seq_num / CHUNK_SIZE] = false;
+                            inProgress[dataPkt[i].seq_num / CHUNK_SIZE] = false;
+                            numTries[i]++;
+                        }
+                    }
                 }
-                else{
-                    chunkSent[dataPkt[i].seq_num / CHUNK_SIZE] = false;
-                    inProgress[dataPkt[i].seq_num / CHUNK_SIZE] = false;
+            }
+            else if(n == 0){
+                if(close(sockfd[i]) < 0){
+                    error_exit("closing sockfd");
                 }
             }
             else{
@@ -158,8 +174,40 @@ int main(){
                 // rcv success
                 inProgress[dataPkt[i].seq_num / CHUNK_SIZE] = false;
 
-                if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
-                    error_exit("socket send error");
+                nextChunk = nextChunkNum(chunkSent, inProgress, numChunks);
+        
+                if(nextChunk != -1){
+                    fseek( inpFilePtr, nextChunk * CHUNK_SIZE, SEEK_SET);
+                    bytesRead = fread(dataPkt[i].data, 1, CHUNK_SIZE, inpFilePtr);
+
+                    dataPkt[i].data[bytesRead] = '\0';
+                    // printf("%s\n", dataPkt[i].data);
+
+                    if(bytesRead == 0){
+                        if(feof( inpFilePtr )){
+                            // return;
+                        }
+                        else if(ferror( inpFilePtr )){
+                            error_exit(" file read error");
+                        }
+                    }
+                    
+                    dataPkt[i].category = DATA;
+                    dataPkt[i].channel_id = i;
+                    dataPkt[i].data_size = bytesRead;
+                    dataPkt[i].seq_num = nextChunk * CHUNK_SIZE;
+                    if(nextChunk == numChunks - 1)
+                        dataPkt[i].is_last = true;
+                    else
+                        dataPkt[i].is_last = false;        
+
+                    if( send(sockfd[i], &dataPkt[i], sizeof(dataPkt[i]), 0) < 0){
+                        error_exit("socket send error");
+                    }
+                    else{
+                        numTries[i] = 1;
+                        pktsOut++;
+                    }
                 }
 
                 if(ackPkt[i].seq_num / CHUNK_SIZE == numChunks - 1){
