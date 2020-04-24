@@ -5,7 +5,7 @@ void error_exit(char *s){
     exit(1);
 }
 
-void sendToServer(channel_id chnlNum, FILE *filePtr, int numChunks){
+void sendToServer(channel_id chnlNum, int fileFd, int numChunks){
     
     struct sockaddr_in serverAddr;
     int sockfd, slen=sizeof(serverAddr);
@@ -27,70 +27,78 @@ void sendToServer(channel_id chnlNum, FILE *filePtr, int numChunks){
 
     packet_t dataPkt, ackPkt;
     int bytesRead = 0;
+    // dataPkt.data[bytesRead] = '\0';
+    // if(bytesRead < 0){
+    //     error_exit("read error");
+    // }
 
-    for(int i = chnlNum; i < numChunks; i += 2){
-        fseek( filePtr, i * CHUNK_SIZE, SEEK_SET);
-        bytesRead = fread(dataPkt.data, 1, CHUNK_SIZE, filePtr);
+    // for(int i = chnlNum; i < numChunks; i += 2){
+    while( (bytesRead = read(fileFd, dataPkt.data, CHUNK_SIZE)) > 0){
+    //     fseek( filePtr, i * CHUNK_SIZE, SEEK_SET);
+        // bytesRead = fread(dataPkt.data, 1, CHUNK_SIZE, filePtr);
 
         dataPkt.data[bytesRead] = '\0';
-        // printf("%s\n", dataPkt.data);
+    //     // printf("%s\n", dataPkt.data);
 
-        if(bytesRead == 0){
-            if(feof( filePtr )){
-                printf("I'm process %d, and I have done my work\n", getpid());
-                printf("At the end I read %s", dataPkt.data);
-                // return;
-            }
-            else if(ferror( filePtr )){
-                error_exit(" file read error");
-            }
-        }
+        // if(bytesRead == 0){
+        //     if(feof( filePtr )){
+        //         printf("I'm process %d, and I have done my work\n", getpid());
+        //         printf("At the end I read %s", dataPkt.data);
+        //         // return;
+        //     }
+        //     else if(ferror( filePtr )){
+        //         error_exit(" file read error");
+        //     }
+        // }
         
-        // dataPkt.data[bytesRead] = '\0';
+    //     // dataPkt.data[bytesRead] = '\0';
         dataPkt.category = DATA;
         dataPkt.channel_id = chnlNum;
         dataPkt.data_size = bytesRead;
-        dataPkt.seq_num = i * CHUNK_SIZE;
-        if(i == numChunks - 1 || i == numChunks - 2)
-            dataPkt.is_last = true;
-        else
-            dataPkt.is_last = false;        
-
-        if( send(sockfd, &dataPkt, sizeof(dataPkt), 0) < 0){
-            error_exit("socket send error");
+        dataPkt.seq_num = lseek(fileFd, 0, SEEK_CUR);
+        if(dataPkt.seq_num < 0){
+            error_exit("Error seeking");
         }
+    //     if(i == numChunks - 1 || i == numChunks - 2)
+    //         dataPkt.is_last = true;
+    //     else
+    //         dataPkt.is_last = false;        
 
-        fd_set rcvSet;
-        int n;
+    //     if( send(sockfd, &dataPkt, sizeof(dataPkt), 0) < 0){
+    //         error_exit("socket send error");
+    //     }
+
+    //     fd_set rcvSet;
+    //     int n;
         
-        struct timeval tv;
+    //     struct timeval tv;
 
-        for( ; ; ){            
+    //     for( ; ; ){            
 
-            FD_ZERO(&rcvSet);
-            FD_SET(sockfd, &rcvSet);
+    //         FD_ZERO(&rcvSet);
+    //         FD_SET(sockfd, &rcvSet);
 
-            tv.tv_sec = TIMEOUT;
-            tv.tv_usec = 0;
+    //         tv.tv_sec = TIMEOUT;
+    //         tv.tv_usec = 0;
 
-            if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
-                error_exit("select error");
-            }
+    //         if((n = select(sockfd + 1, &rcvSet, NULL, NULL, &tv) ) < 0){
+    //             error_exit("select error");
+    //         }
 
-            else if(n == 0) {     // timeout expired, send packet again
-                printf("Timeout occured\n");
-                if (send(sockfd , &dataPkt, sizeof(dataPkt), 0) < 0 ){
-                    error_exit("send after timeout error");
-                }
-            }
+    //         else if(n == 0) {     // timeout expired, send packet again
+    //             printf("Timeout occured\n");
+    //             if (send(sockfd , &dataPkt, sizeof(dataPkt), 0) < 0 ){
+    //                 error_exit("send after timeout error");
+    //             }
+    //         }
 
-            else{
-                if(recv(sockfd, &ackPkt, sizeof(ackPkt), 0) < 0){
-                    error_exit("recv ack error");
-                }
-                break;
-            }
-        }
+    //         else{
+    //             if(recv(sockfd, &ackPkt, sizeof(ackPkt), 0) < 0){
+    //                 error_exit("recv ack error");
+    //             }
+    //             break;
+    //         }
+    //     }
     }
 
     if(close(sockfd) < 0){
@@ -100,9 +108,7 @@ void sendToServer(channel_id chnlNum, FILE *filePtr, int numChunks){
 
 int main(){
 
-    pid_t pid_ch1, pid_ch2;
-
-    pid_ch1 = fork();
+    pid_t pid_ch1, pid_ch2;    
 
     FILE *inpFilePtr = fopen(INPUT_FILE, "rb");
     
@@ -119,20 +125,24 @@ int main(){
 
     fclose(inpFilePtr);
 
-    inpFilePtr = fopen(INPUT_FILE, "rb");
-    
-    if(inpFilePtr == NULL){
-        error_exit("opening input file error");
-    }   
+    int fileFd = open(INPUT_FILE, O_RDONLY);
+
+    if(fileFd < 0){
+        error_exit("Could not open input file");
+    }
+
+    pid_ch1 = fork();
 
     switch(pid_ch1){
         case 0: // child_one
         {
             printf("Hello from child %d, I will handle odd chunks and fileSize is %d bytes from filePtr\n", getpid(), fileSize);
             
-            sendToServer(CHANNEL_ONE, inpFilePtr, numChunks);
+            sendToServer(CHANNEL_ONE, fileFd, numChunks);
 
-            fclose(inpFilePtr);
+            if(close(fileFd) < 0){
+                error_exit("close fileFd error");
+            }
             exit(EXIT_SUCCESS);
         }
         break;
@@ -142,24 +152,16 @@ int main(){
         }
         break;
         default:    //parent
-        {
-            pid_ch2 = fork();
-            if(pid_ch2 < 0){
-                error_exit("forking child 2 error");
-            }
-            else if(pid_ch2 == 0){  // child 2
-                printf("Hello from child %d, I will handle even chunks and fileSize is %d bytes\n", getpid(), fileSize);
+        {           
+            printf("Hello from parent %d, I will handle even chunks and fileSize is %d bytes\n", getpid(), fileSize);
+            
+            sendToServer(CHANNEL_TWO, fileFd, numChunks);
 
-                sendToServer(CHANNEL_TWO, inpFilePtr, numChunks);
+            if(close(fileFd) < 0){
+                error_exit("close fileFd error");
+            }
 
-                fclose(inpFilePtr);
-                exit(EXIT_SUCCESS);
-            }
-            else{   //parent
-                printf("Hello from parent %d, fileSize is %d bytes\n", getpid(), fileSize);
-                fclose(inpFilePtr);
-                while(wait(NULL) > 0);
-            }
+            wait(NULL);            
         }
         break;
     }    

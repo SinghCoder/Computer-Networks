@@ -7,7 +7,7 @@
 
 #define MAXPENDING 5
 #define BUFFERSIZE 32
-#define SERVER_PORT 8890
+#define SERVER_PORT 8899
 #define CHUNK_SIZE 9
 #define PDR 10  
 

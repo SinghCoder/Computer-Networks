@@ -12,7 +12,7 @@
 
 #define INPUT_FILE "input.txt"
 #define CHUNK_SIZE 9
-#define SERVER_PORT 8890
+#define SERVER_PORT 8899
 #define SERVER_IP "127.0.0.1"
 #define TIMEOUT_S 2
 #define NUM_CONNECTIONS 2

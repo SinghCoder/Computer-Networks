@@ -8,6 +8,7 @@
 #include <sys/poll.h>
 #include <sys/wait.h>
 #include <sys/select.h>
+#include <fcntl.h>
 
 #define INPUT_FILE "input.txt"
 #define CHUNK_SIZE 9

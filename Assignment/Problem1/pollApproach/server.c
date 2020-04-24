@@ -103,7 +103,7 @@ int main ()
                 print_trace(RECEIVED, dataPkt.seq_num, dataPkt.data_size, dataPkt.channel_id, dataPkt.data);
                 
                 if(dataPkt.channel_id == CHANNEL_ONE){
-                    printf("Igbnoring it\n");
+                    printf("Ignoring it\n");
                     continue;
                 }
                 // discardRandom();

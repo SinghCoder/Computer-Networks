@@ -11,7 +11,7 @@ void discardRandom(){
     else{
         toDiscard = false;
     }
-    if(toDiscard)
+    // if(toDiscard)
     // printf("And I'm discarding\n");
 }
 
