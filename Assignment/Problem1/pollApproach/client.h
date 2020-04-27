@@ -11,30 +11,23 @@
 #include <fcntl.h>
 #include <sys/sem.h>
 #include <sys/ipc.h>
+#include <errno.h>
+#include <time.h>
+#include <sys/time.h>
+#include "packet.h"
 
 #define INPUT_FILE "input.txt"
-#define CHUNK_SIZE 9
+#define CHUNK_SIZE 100
 #define SERVER_PORT 8888
 #define SERVER_IP "127.0.0.1"
-#define TIMEOUT 2
-#define MAX_TRIES 3
+#define TIMEOUT_S 2
+#define MAX_TRIES 10
+#define CLIENT_LOG_FILE "client.log"
 
-typedef enum { false, true } bool;
-typedef enum { DATA, ACK } packet_category;
-typedef enum { SENT, RECEIVED } action;
-typedef enum { CHANNEL_ONE, CHANNEL_TWO } channel_id;
-
-typedef struct packet{
-    char data[CHUNK_SIZE + 1];
-    int data_size;
-    int seq_num;
-    bool is_last;
-    packet_category category;
-    int channel_id;
-}packet_t;
-
-union semun {
+union semun {   // for semaphore
     int val;
     struct semid_ds *buf;
     unsigned short  *array;
 } semArgs;
+
+FILE *logFilePtr;

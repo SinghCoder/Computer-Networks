@@ -1,0 +1,105 @@
+COMPUTER NETWORKS (CS F303)
+SECOND SEMESTER 2019-20
+Programming Assignment
+Problem 1: File transfer using multi-channel stop-and-wait protocol
+Consider the following modified version of stop-and-wait protocol.
+Multi-channel stop-and-wait protocol without DATA or ACK losses.
+1. The sender transmits packets through two different channels (TCP connections).
+2. The server acknowledges the receipt of a packet via the same channel through which the
+corresponding packet has been received.
+3. The sender transmits a new packet using the same channel on which it has received an ACK for its
+one of the previously transmitted packet. Note that, at a time, there can be at most two outstanding
+unacknowledged packets at the sender side.
+4. On the server-side, the packets transmitted through different channels may arrive out of order. In
+that case, the server has to buffer the packets temporarily to finally construct in-order data stream.
+Write client and server programs to upload a given file (“input.txt”) from client to the server using
+ARQ protocol as described above by making TCP connections between the client and the server.
+Your program MUST include following features.
+1. The complete file should be divided into equal size chunks and each chunk should be
+transmitted separately using stop and wait for protocol by encapsulating it in the form of a
+packet structure. The size of each chunk should be defined as #define PACKET_SIZE macro.
+For submission purposes, the value of PACKET_SIZE should be kept as 100. However, while
+evaluating your code, we will test it for other values as well. Also, handle the situation when
+the file size is not multiple of PACKET_SIZE.
+2. In addition to the payload, the packet structure should contain following information in form
+of a header.
+a. The size (number of bytes) of the payload
+b. The Seq. No. (in terms of byte) specifying the offset of the first byte of the packet with
+respect to the input file.
+c. Whether the packet is last packet or not?
+d. The packet is DATA or ACK. In this way, you can utilize the same packet structure for
+both DATA send by the client and ACK send by the server. The Seq. No. field in the
+ACK packet would correspond to it DATA packet with the same Seq. No. value received
+from the client.
+e. The channel information specifying the Id (either 0 or 1) of the channel through which
+the packet has been transmitted. 
+COMPUTER NETWORKS (CS F303)
+SECOND SEMESTER 2019-20
+Programming Assignment
+Problem 1: File transfer using multi-channel stop-and-wait protocol
+Consider the following modified version of stop-and-wait protocol.
+Multi-channel stop-and-wait protocol without DATA or ACK losses.
+1. The sender transmits packets through two different channels (TCP connections).
+2. The server acknowledges the receipt of a packet via the same channel through which the
+corresponding packet has been received.
+3. The sender transmits a new packet using the same channel on which it has received an ACK for its
+one of the previously transmitted packet. Note that, at a time, there can be at most two outstanding
+unacknowledged packets at the sender side.
+4. On the server-side, the packets transmitted through different channels may arrive out of order. In
+that case, the server has to buffer the packets temporarily to finally construct in-order data stream.
+Write client and server programs to upload a given file (“input.txt”) from client to the server using
+ARQ protocol as described above by making TCP connections between the client and the server.
+Your program MUST include following features.
+1. The complete file should be divided into equal size chunks and each chunk should be
+transmitted separately using stop and wait for protocol by encapsulating it in the form of a
+packet structure. The size of each chunk should be defined as #define PACKET_SIZE macro.
+For submission purposes, the value of PACKET_SIZE should be kept as 100. However, while
+evaluating your code, we will test it for other values as well. Also, handle the situation when
+the file size is not multiple of PACKET_SIZE.
+2. In addition to the payload, the packet structure should contain following information in form
+of a header.
+a. The size (number of bytes) of the payload
+b. The Seq. No. (in terms of byte) specifying the offset of the first byte of the packet with
+respect to the input file.
+c. Whether the packet is last packet or not?
+d. The packet is DATA or ACK. In this way, you can utilize the same packet structure for
+both DATA send by the client and ACK send by the server. The Seq. No. field in the
+ACK packet would correspond to it DATA packet with the same Seq. No. value received
+from the client.
+e. The channel information specifying the Id (either 0 or 1) of the channel through which
+the packet has been transmitted. 
+COMPUTER NETWORKS (CS F303)
+SECOND SEMESTER 2019-20
+Programming Assignment
+Problem 1: File transfer using multi-channel stop-and-wait protocol
+Consider the following modified version of stop-and-wait protocol.
+Multi-channel stop-and-wait protocol without DATA or ACK losses.
+1. The sender transmits packets through two different channels (TCP connections).
+2. The server acknowledges the receipt of a packet via the same channel through which the
+corresponding packet has been received.
+3. The sender transmits a new packet using the same channel on which it has received an ACK for its
+one of the previously transmitted packet. Note that, at a time, there can be at most two outstanding
+unacknowledged packets at the sender side.
+4. On the server-side, the packets transmitted through different channels may arrive out of order. In
+that case, the server has to buffer the packets temporarily to finally construct in-order data stream.
+Write client and server programs to upload a given file (“input.txt”) from client to the server using
+ARQ protocol as described above by making TCP connections between the client and the server.
+Your program MUST include following features.
+1. The complete file should be divided into equal size chunks and each chunk should be
+transmitted separately using stop and wait for protocol by encapsulating it in the form of a
+packet structure. The size of each chunk should be defined as #define PACKET_SIZE macro.
+For submission purposes, the value of PACKET_SIZE should be kept as 100. However, while
+evaluating your code, we will test it for other values as well. Also, handle the situation when
+the file size is not multiple of PACKET_SIZE.
+2. In addition to the payload, the packet structure should contain following information in form
+of a header.
+a. The size (number of bytes) of the payload
+b. The Seq. No. (in terms of byte) specifying the offset of the first byte of the packet with
+respect to the input file.
+c. Whether the packet is last packet or not?
+d. The packet is DATA or ACK. In this way, you can utilize the same packet structure for
+both DATA send by the client and ACK send by the server. The Seq. No. field in the
+ACK packet would correspond to it DATA packet with the same Seq. No. value received
+from the client.
+e. The channel information specifying the Id (either 0 or 1) of the channel through which
+the packet has been transmitted. 
